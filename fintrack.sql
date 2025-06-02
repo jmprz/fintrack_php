@@ -27,7 +27,7 @@ SET time_zone = "+00:00";
 -- Table structure for table `users`
 --
 
-CREATE TABLE `users` (
+CREATE TABLE if not exists `users` (
   `user_id` int(11) NOT NULL,
   `account_type` enum('employee','admin') NOT NULL,
   `first_name` varchar(100) NOT NULL,
@@ -38,6 +38,23 @@ CREATE TABLE `users` (
   `is_verified` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `expenses`
+--
+
+CREATE TABLE `expenses` (
+  `expense_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `date` date NOT NULL,
+  `particulars` text NOT NULL,
+  `category` varchar(50) NOT NULL,
+  `amount` decimal(15,2) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- Indexes for dumped tables
 --
@@ -45,9 +62,18 @@ CREATE TABLE `users` (
 --
 -- Indexes for table `users`
 --
-ALTER TABLE `users`
-  ADD PRIMARY KEY (`user_id`),
-  ADD UNIQUE KEY `email_address` (`email_address`);
+-- ALTER TABLE `users`
+--   ADD PRIMARY KEY (`user_id`),
+--   ADD UNIQUE KEY `email_address` (`email_address`);
+
+--
+-- Indexes for table `expenses`
+--
+ALTER TABLE `expenses`
+  ADD PRIMARY KEY (`expense_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `date` (`date`),
+  ADD KEY `category` (`category`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -58,6 +84,23 @@ ALTER TABLE `users`
 --
 ALTER TABLE `users`
   MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `expenses`
+--
+ALTER TABLE `expenses`
+  MODIFY `expense_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `expenses`
+--
+ALTER TABLE `expenses`
+  ADD CONSTRAINT `expenses_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
