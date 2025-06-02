@@ -87,7 +87,7 @@ $con->close();
             <div>
                 <label class="block text-sm font-medium text-gray-700">Account Type</label>
                 <select name="account_type" class="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-indigo-200">
-                    <option value="employee">Employee</option>
+                    <option value="employee" selected="selected">Employee</option>
                     <option value="admin">Admin</option>
                 </select>
             </div>

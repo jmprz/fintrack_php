@@ -21,10 +21,30 @@ $date = $_POST['date'];
 $particulars = $_POST['particulars'];
 $category = $_POST['category'];
 $amount = floatval($_POST['amount']);
+$company_id = $_SESSION['selected_company_id'] ?? null;
+
+// Verify user has access to this company
+if (!$company_id) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'error' => 'No company selected']);
+    exit();
+}
+
+$verify_stmt = $con->prepare("SELECT 1 FROM user_companies WHERE user_id = ? AND company_id = ? LIMIT 1");
+$verify_stmt->bind_param("ii", $user_id, $company_id);
+$verify_stmt->execute();
+$verify_result = $verify_stmt->get_result();
+
+if ($verify_result->num_rows === 0) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'error' => 'Company access denied']);
+    exit();
+}
+$verify_stmt->close();
 
 // Insert the expense
-$stmt = $con->prepare("INSERT INTO expenses (user_id, date, particulars, category, amount) VALUES (?, ?, ?, ?, ?)");
-$stmt->bind_param("isssd", $user_id, $date, $particulars, $category, $amount);
+$stmt = $con->prepare("INSERT INTO expenses (user_id, company_id, date, particulars, category, amount) VALUES (?, ?, ?, ?, ?, ?)");
+$stmt->bind_param("iisssd", $user_id, $company_id, $date, $particulars, $category, $amount);
 
 $success = $stmt->execute();
 

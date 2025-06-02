@@ -36,6 +36,26 @@ $search = isset($_GET['search']) ? $_GET['search'] : '';
 $sort_column = isset($_GET['sort']) ? $_GET['sort'] : 'date';
 $sort_direction = isset($_GET['direction']) ? $_GET['direction'] : 'ASC';
 
+// Fetch companies for the user
+$companies_stmt = $con->prepare("
+    SELECT c.* 
+    FROM companies c 
+    JOIN user_companies uc ON c.company_id = uc.company_id 
+    WHERE uc.user_id = ?
+    ORDER BY c.company_name
+");
+$companies_stmt->bind_param("i", $user_id);
+$companies_stmt->execute();
+$companies_result = $companies_stmt->get_result();
+
+// If no company is selected and user has companies, select the first one
+if (!isset($_SESSION['selected_company_id']) && $companies_result->num_rows > 0) {
+    $first_company = $companies_result->fetch_assoc();
+    $_SESSION['selected_company_id'] = $first_company['company_id'];
+    $_SESSION['selected_company_name'] = $first_company['company_name'];
+    $companies_result->data_seek(0); // Reset result pointer
+}
+
 // Fetch expense categories
 $categories = [
     'PROF FEE', 'DONATION', 'VEHICLE', 'SUPPLIES', 'EMPLOYEES BENEFIT',
@@ -86,6 +106,7 @@ $con->close();
           <li><a href="trial_balance.php" class="block py-2 px-3 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Trial Balance</a></li>
           <li><a href="income_statements.php" class="block py-2 px-3 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Income Statements</a></li>
           <li><a href="balance_sheet.php" class="block py-2 px-3 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Balance Sheet</a></li>
+          <li><a href="profile.php" class="block py-2 px-3 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Profile</a></li>
         </ul>
       </nav>
       <a href="logout.php" class="block py-2 px-8 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Logout</a>
@@ -97,7 +118,12 @@ $con->close();
     <!-- Main Content -->
     <main class="flex-1 p-6 md:ml-64">
       <header class="flex justify-between items-center mb-6">
-        <h1 class="text-5xl font-semibold text-gray-800">Expenses</h1>
+        <div>
+          <h1 class="text-5xl font-semibold text-gray-800">Expenses</h1>
+          <?php if (isset($_SESSION['selected_company_name'])): ?>
+            <p class="text-lg text-gray-600 mt-2">for <?php echo htmlspecialchars($_SESSION['selected_company_name']); ?></p>
+          <?php endif; ?>
+        </div>
         <button id="menuBtn" class="md:hidden px-4 py-2 bg-blue-200 text-white rounded">
           <div class="text-2xl font-bold text-blue-500">☰</div>
         </button>
@@ -136,19 +162,23 @@ $con->close();
 
           <!-- Search Box -->
           <div class="flex-1 max-w-md mx-4">
-            <input type="text" id="searchBox" placeholder="Search Account Title" 
+            <input type="text" id="searchBox" placeholder="Search Category" 
                    class="w-full rounded border p-2" value="<?php echo htmlspecialchars($search); ?>">
           </div>
 
           <!-- Add New Expense Button -->
           <div class="flex gap-4">
-            <button id="addExpenseBtn" class="bg-[#1bb34cff] text-white px-4 py-2 rounded hover:bg-[#158f3cff]">
+            <button id="addExpenseBtn" class="bg-[#1bb34cff] text-white px-4 py-2 rounded hover:bg-[#158f3cff] disabled:opacity-50 disabled:cursor-not-allowed">
               Add New Expense
             </button>
             <button id="viewYearlySummaryBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
               View Yearly Summary
             </button>
           </div>
+        </div>
+        <!-- No Categories Warning -->
+        <div id="noCategoriesWarning" class="hidden mt-4 p-4 bg-yellow-50 text-yellow-800 rounded-md">
+          <p>No expense categories found. Please add categories in your <a href="profile.php" class="underline">profile page</a> first.</p>
         </div>
       </div>
 
@@ -214,11 +244,7 @@ $con->close();
                 </label>
                 <select id="category" name="category" required
                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                  <?php foreach ($categories as $category): ?>
-                    <option value="<?php echo htmlspecialchars($category); ?>">
-                      <?php echo htmlspecialchars($category); ?>
-                    </option>
-                  <?php endforeach; ?>
+                  <option value="">Select a category...</option>
                 </select>
               </div>
               <div class="mb-6">
@@ -266,6 +292,9 @@ $con->close();
   <script>
     // Initialize DataTable
     $(document).ready(function() {
+      // Load categories and update UI
+      loadCategories();
+
       const table = $('#expensesTable').DataTable({
         ajax: {
           url: 'get_expenses.php',
@@ -273,6 +302,7 @@ $con->close();
             d.month = $('#monthSelect').val();
             d.year = $('#yearSelect').val();
             d.category_search = $('#searchBox').val();
+            d.company_id = $('#companySelect').val();
           },
           dataSrc: function(json) {
             // Calculate and update selected account total from the filtered data
@@ -331,6 +361,22 @@ $con->close();
         table.ajax.reload();
       });
 
+      // Handle company change
+      $('#companySelect').change(function() {
+        const companyId = $(this).val();
+        
+        // Update session via AJAX
+        $.post('company_selector.php', { company_id: companyId })
+          .done(function(response) {
+            if (response.success) {
+              // Reload the table with new company data
+              table.ajax.reload();
+              // Update summary cards
+              updateSummaryCards();
+            }
+          });
+      });
+
       // Function to update summary cards (modified to not handle selected total)
       function updateSummaryCards() {
         const month = $('#monthSelect').val();
@@ -361,6 +407,7 @@ $con->close();
       form.reset();
       delete form.dataset.id;
       document.getElementById('modalTitle').textContent = 'Add New Expense';
+      loadCategories(); // Reload categories when form is reset
     }
 
     function openModal() {
@@ -373,8 +420,52 @@ $con->close();
       resetForm();
     }
 
+    // Load categories function
+    function loadCategories() {
+      fetch('get_expense_categories.php')
+        .then(response => response.json())
+        .then(response => {
+          const categories = response.data || [];
+          const categorySelect = document.getElementById('category');
+          const addExpenseBtn = document.getElementById('addExpenseBtn');
+          const noCategoriesWarning = document.getElementById('noCategoriesWarning');
+          
+          // Clear existing options
+          categorySelect.innerHTML = '<option value="">Select a category...</option>';
+          
+          if (categories.length === 0) {
+            // Disable add expense button and show warning
+            addExpenseBtn.disabled = true;
+            noCategoriesWarning.classList.remove('hidden');
+          } else {
+            // Enable add expense button and hide warning
+            addExpenseBtn.disabled = false;
+            noCategoriesWarning.classList.add('hidden');
+            
+            // Add new options
+            categories.forEach(category => {
+              const option = document.createElement('option');
+              option.value = category;
+              option.textContent = category;
+              categorySelect.appendChild(option);
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Error loading categories:', error);
+          // Show error state
+          addExpenseBtn.disabled = true;
+          noCategoriesWarning.classList.remove('hidden');
+          noCategoriesWarning.innerHTML = 'Error loading categories. Please try again later.';
+        });
+    }
+
     // Add New Expense Button
-    document.getElementById('addExpenseBtn').addEventListener('click', openModal);
+    document.getElementById('addExpenseBtn').addEventListener('click', function() {
+      if (!this.disabled) {
+        openModal();
+      }
+    });
 
     // Mobile Menu Toggle
     const menuBtn = document.getElementById('menuBtn');
@@ -446,7 +537,8 @@ $con->close();
 
     function openYearlySummaryModal() {
       const year = $('#yearSelect').val();
-      $('#summaryYear').text(year);
+      const companyName = <?php echo json_encode(isset($_SESSION['selected_company_name']) ? $_SESSION['selected_company_name'] : ''); ?>;
+      $('#summaryYear').text(year + (companyName ? ' - ' + companyName : ''));
       
       fetch(`get_yearly_summary.php?year=${year}`)
         .then(response => response.json())

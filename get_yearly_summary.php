@@ -5,71 +5,68 @@ require_once 'connection.php';
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     header('Content-Type: application/json');
-    echo json_encode(['error' => 'Unauthorized']);
+    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();
 }
 
-$user_id = $_SESSION['user_id'];
 $year = isset($_GET['year']) ? intval($_GET['year']) : date('Y');
+$company_id = isset($_SESSION['selected_company_id']) ? $_SESSION['selected_company_id'] : null;
 
-// Get all account titles first
-$titles_query = "SELECT DISTINCT category as account_title FROM expenses WHERE user_id = ? AND YEAR(date) = ? ORDER BY category";
-$stmt = $con->prepare($titles_query);
-$stmt->bind_param("ii", $user_id, $year);
-$stmt->execute();
-$result = $stmt->get_result();
-$account_titles = [];
-while ($row = $result->fetch_assoc()) {
-    $account_titles[] = $row['account_title'];
+if (!$company_id) {
+    header('Content-Type: application/json');
+    echo json_encode([]);
+    exit();
 }
-$stmt->close();
 
-$data = [];
+// Get all unique categories for the company
+$categories_query = "SELECT DISTINCT category FROM expenses WHERE company_id = ? ORDER BY category";
+$stmt = $con->prepare($categories_query);
+$stmt->bind_param("i", $company_id);
+$stmt->execute();
+$categories_result = $stmt->get_result();
 
-// For each account title, get monthly totals
-foreach ($account_titles as $title) {
+$summary = [];
+
+while ($category = $categories_result->fetch_assoc()) {
+    // For each category, get monthly totals
     $monthly_query = "SELECT 
         MONTH(date) as month,
         COALESCE(SUM(amount), 0) as total
     FROM expenses 
-    WHERE user_id = ? 
-    AND YEAR(date) = ? 
-    AND category = ?
-    GROUP BY MONTH(date)
-    ORDER BY MONTH(date)";
+    WHERE company_id = ? AND category = ? AND YEAR(date) = ?
+    GROUP BY MONTH(date)";
 
     $stmt = $con->prepare($monthly_query);
-    $stmt->bind_param("iis", $user_id, $year, $title);
+    $stmt->bind_param("isi", $company_id, $category['category'], $year);
     $stmt->execute();
-    $result = $stmt->get_result();
-    
-    // Initialize array with zeros for all months
+    $monthly_result = $stmt->get_result();
+
+    // Initialize monthly totals array with zeros
     $monthly_totals = array_fill(0, 12, 0);
-    
-    // Fill in actual values
-    while ($row = $result->fetch_assoc()) {
-        $month_index = $row['month'] - 1; // Convert 1-based month to 0-based index
-        $monthly_totals[$month_index] = floatval($row['total']);
+    $total = 0;
+
+    // Fill in the actual values
+    while ($month_data = $monthly_result->fetch_assoc()) {
+        $month_index = intval($month_data['month']) - 1;
+        $monthly_totals[$month_index] = floatval($month_data['total']);
+        $total += floatval($month_data['total']);
     }
-    
-    $total = array_sum($monthly_totals);
-    
-    $data[] = [
-        'account_title' => $title,
+
+    $summary[] = [
+        'account_title' => $category['category'],
         'monthly_totals' => $monthly_totals,
         'total' => $total
     ];
-    
-    $stmt->close();
 }
 
-// Sort data by total amount descending
-usort($data, function($a, $b) {
-    return $b['total'] - $a['total'];
+// Sort summary by account title
+usort($summary, function($a, $b) {
+    return strcmp($a['account_title'], $b['account_title']);
 });
 
 header('Content-Type: application/json');
-echo json_encode($data);
+echo json_encode($summary);
 
+$stmt->close();
 $con->close();
 ?> 

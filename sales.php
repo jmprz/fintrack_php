@@ -25,6 +25,37 @@ if ($result->num_rows !== 1) {
 $user = $result->fetch_assoc();
 $full_name = $user['first_name'] . ' ' . $user['last_name'];
 
+// Get current month and year
+$current_month = isset($_GET['month']) ? intval($_GET['month']) : intval(date('m'));
+$current_year = isset($_GET['year']) ? intval($_GET['year']) : intval(date('Y'));
+
+// Get search term if any
+$search = isset($_GET['search']) ? $_GET['search'] : '';
+
+// Get sort column and direction
+$sort_column = isset($_GET['sort']) ? $_GET['sort'] : 'date';
+$sort_direction = isset($_GET['direction']) ? $_GET['direction'] : 'ASC';
+
+// Fetch companies for the user
+$companies_stmt = $con->prepare("
+    SELECT c.* 
+    FROM companies c 
+    JOIN user_companies uc ON c.company_id = uc.company_id 
+    WHERE uc.user_id = ?
+    ORDER BY c.company_name
+");
+$companies_stmt->bind_param("i", $user_id);
+$companies_stmt->execute();
+$companies_result = $companies_stmt->get_result();
+
+// If no company is selected and user has companies, select the first one
+if (!isset($_SESSION['selected_company_id']) && $companies_result->num_rows > 0) {
+    $first_company = $companies_result->fetch_assoc();
+    $_SESSION['selected_company_id'] = $first_company['company_id'];
+    $_SESSION['selected_company_name'] = $first_company['company_name'];
+    $companies_result->data_seek(0); // Reset result pointer
+}
+
 $stmt->close();
 $con->close();
 ?>
@@ -36,8 +67,14 @@ $con->close();
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/x-icon" href="img/favicon.ico" />
-  <title>FinTrack | Dashboard</title>
+  <title>FinTrack | Sales</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" rel="stylesheet" type="text/css" />
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+  <link href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css" rel="stylesheet">
+  <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
 </head>
 <body class="bg-gray-100 font-sans">
 
@@ -54,6 +91,7 @@ $con->close();
           <li><a href="trial_balance.php" class="block py-2 px-3 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Trial Balance</a></li>
           <li><a href="income_statements.php" class="block py-2 px-3 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Income Statements</a></li>
           <li><a href="balance_sheet.php" class="block py-2 px-3 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Balance Sheet</a></li>
+          <li><a href="profile.php" class="block py-2 px-3 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Profile</a></li>
         </ul>
       </nav>
       <a href="logout.php" class="block py-2 px-8 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Logout</a>
@@ -65,68 +103,348 @@ $con->close();
     <!-- Main Content -->
     <main class="flex-1 p-6 md:ml-64">
       <header class="flex justify-between items-center mb-6">
-        <h1 class="text-5xl font-semibold text-gray-800">Sales</h1>
+        <div>
+          <h1 class="text-5xl font-semibold text-gray-800">Sales</h1>
+          <?php if (isset($_SESSION['selected_company_name'])): ?>
+            <p class="text-lg text-gray-600 mt-2">for <?php echo htmlspecialchars($_SESSION['selected_company_name']); ?></p>
+          <?php endif; ?>
+        </div>
         <button id="menuBtn" class="md:hidden px-4 py-2 bg-blue-200 text-white rounded">
           <div class="text-2xl font-bold text-blue-500">☰</div>
         </button>
       </header>
 
-      <div class="overflow-x-auto">
-    <table class="min-w-full text-sm text-center border border-gray-200">
-      <thead class="bg-gray-100 text-gray-700">
-        <tr>
-          <th class="py-2 px-4 border">Description</th>
-          <th class="py-2 px-4 border">Jan</th>
-          <th class="py-2 px-4 border">Feb</th>
-          <th class="py-2 px-4 border">Mar</th>
-          <th class="py-2 px-4 border">Apr</th>
-          <th class="py-2 px-4 border">May</th>
-          <th class="py-2 px-4 border">Jun</th>
-          <th class="py-2 px-4 border">Jul</th>
-          <th class="py-2 px-4 border">Aug</th>
-          <th class="py-2 px-4 border">Sep</th>
-          <th class="py-2 px-4 border">Oct</th>
-          <th class="py-2 px-4 border">Nov</th>
-          <th class="py-2 px-4 border">Dec</th>
-          <th class="py-2 px-4 border">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- Example Row -->
-        <tr>
-          <td class="py-2 px-4 border text-left">Office Supplies</td>
-          <td class="py-2 px-4 border">₱0.00</td>
-          <td class="py-2 px-4 border">₱0.00</td>
-          <td class="py-2 px-4 border">₱0.00</td>
-          <td class="py-2 px-4 border">₱0.00</td>
-          <td class="py-2 px-4 border">₱0.00</td>
-          <td class="py-2 px-4 border">₱0.00</td>
-          <td class="py-2 px-4 border">₱0.00</td>
-          <td class="py-2 px-4 border">₱0.00</td>
-          <td class="py-2 px-4 border">₱0.00</td>
-          <td class="py-2 px-4 border">₱0.00</td>
-          <td class="py-2 px-4 border">₱0.00</td>
-          <td class="py-2 px-4 border">₱0.00</td>
-          <td class="py-2 px-4 border font-semibold">₱0.00</td>
-        </tr>
-        <!-- Add more rows as needed -->
-      </tbody>
-      <tfoot>
-        <tr class="bg-gray-200 font-bold">
-          <td class="py-2 px-4 border text-left">Total for the Year</td>
-          <td colspan="12" class="py-2 px-4 border"></td>
-          <td class="py-2 px-4 border text-green-600">₱0.00</td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-</div>
-     
+      <!-- Controls Section -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="flex flex-wrap gap-4 justify-between items-center">
+          <!-- Month/Year Selector -->
+          <div class="flex gap-4">
+            <select id="monthSelect" class="rounded border p-2">
+              <?php
+              $months = [
+                1 => 'January', 2 => 'February', 3 => 'March',
+                4 => 'April', 5 => 'May', 6 => 'June',
+                7 => 'July', 8 => 'August', 9 => 'September',
+                10 => 'October', 11 => 'November', 12 => 'December'
+              ];
+              foreach ($months as $num => $name) {
+                $selected = $num === $current_month ? 'selected' : '';
+                echo "<option value='$num' $selected>$name</option>";
+              }
+              ?>
+            </select>
+            <select id="yearSelect" class="rounded border p-2">
+              <?php
+              $start_year = 2020;
+              $end_year = date('Y') + 1;
+              for ($year = $start_year; $year <= $end_year; $year++) {
+                $selected = $year === $current_year ? 'selected' : '';
+                echo "<option value='$year' $selected>$year</option>";
+              }
+              ?>
+            </select>
+          </div>
+
+          <!-- Search Box -->
+          <div class="flex-1 max-w-md mx-4">
+            <input type="text" id="searchBox" placeholder="Search Category" 
+                   class="w-full rounded border p-2" value="<?php echo htmlspecialchars($search); ?>">
+          </div>
+
+          <!-- Add New Sale Button -->
+          <div class="flex gap-4">
+            <button id="addSaleBtn" class="bg-[#1bb34cff] text-white px-4 py-2 rounded hover:bg-[#158f3cff] disabled:opacity-50 disabled:cursor-not-allowed">
+              Add New Sale
+            </button>
+            <button id="viewYearlySummaryBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+              View Yearly Summary
+            </button>
+          </div>
+        </div>
+        <!-- No Categories Warning -->
+        <div id="noCategoriesWarning" class="hidden mt-4 p-4 bg-yellow-50 text-yellow-800 rounded-md">
+          <p>No sales categories found. Please add categories in your <a href="profile.php" class="underline">profile page</a> first.</p>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-4">
+          <h3 class="text-lg font-semibold text-gray-700">Total Sales</h3>
+          <p class="text-2xl font-bold text-[#1bb34cff]"><span id="totalSales">₱0.00</span></p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4">
+          <h3 class="text-lg font-semibold text-gray-700">Selected Account Total</h3>
+          <p class="text-2xl font-bold text-[#1bb34cff]"><span id="selectedAccountTotal">₱0.00</span></p>
+        </div>
+      </div>
+
+      <!-- Sales Table -->
+      <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+          <table id="salesTable" class="min-w-full">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Particulars</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Title</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <!-- Data will be populated by DataTables -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add/Edit Sale Modal -->
+      <div id="saleModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+        <div class="flex items-center justify-center min-h-screen">
+          <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h2 id="modalTitle" class="text-2xl font-bold mb-4">Add New Sale</h2>
+            <form id="saleForm">
+              <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="date">
+                  Date
+                </label>
+                <input type="date" id="date" name="date" required
+                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+              </div>
+              <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="particulars">
+                  Particulars
+                </label>
+                <input type="text" id="particulars" name="particulars" required
+                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+              </div>
+              <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="category">
+                  Account Title
+                </label>
+                <select id="category" name="category" required
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                  <option value="">Select a category...</option>
+                </select>
+              </div>
+              <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="amount">
+                  Amount
+                </label>
+                <input type="number" id="amount" name="amount" step="0.01" required
+                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+              </div>
+              <div class="flex items-center justify-between">
+                <button type="submit" class="bg-[#1bb34cff] text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline hover:bg-[#158f3cff]">
+                  Save Sale
+                </button>
+                <button type="button" onclick="closeModal()" class="bg-gray-500 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline hover:bg-gray-600">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Yearly Summary Modal -->
+      <div id="yearlySummaryModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+          <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-6xl max-h-[80vh] overflow-auto">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-2xl font-bold">Yearly Sales Summary (<span id="summaryYear"></span>)</h2>
+              <button onclick="closeYearlySummaryModal()" class="text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div id="yearlySummaryContent" class="overflow-x-auto">
+              <!-- Content will be loaded dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 
   <!-- JavaScript -->
   <script>
+    // Initialize DataTable
+    $(document).ready(function() {
+      // Load categories and update UI
+      loadCategories();
+
+      const table = $('#salesTable').DataTable({
+        ajax: {
+          url: 'get_sales.php',
+          data: function(d) {
+            d.month = $('#monthSelect').val();
+            d.year = $('#yearSelect').val();
+            d.category_search = $('#searchBox').val();
+            d.company_id = $('#companySelect').val();
+          },
+          dataSrc: function(json) {
+            // Calculate and update selected account total from the filtered data
+            const total = json.data.reduce((sum, row) => sum + parseFloat(row.amount), 0);
+            $('#selectedAccountTotal').text('₱' + total.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }));
+            return json.data;
+          }
+        },
+        columns: [
+          { data: 'date' },
+          { data: 'particulars' },
+          { data: 'category' },
+          { 
+            data: 'amount',
+            render: function(data) {
+              return '₱' + parseFloat(data).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              });
+            }
+          },
+          {
+            data: null,
+            render: function(data, type, row) {
+              return `
+                <button onclick="editSale(${row.id})" class="text-blue-600 hover:text-blue-800 mr-2">
+                  Edit
+                </button>
+                <button onclick="deleteSale(${row.id})" class="text-red-600 hover:text-red-800">
+                  Delete
+                </button>
+              `;
+            }
+          }
+        ],
+        processing: true,
+        serverSide: true,
+        order: [[0, 'desc']],
+        pageLength: 200,
+        lengthMenu: [[50, 100, 200, -1], [50, 100, 200, "All"]],
+        responsive: true,
+        searching: false // We'll handle search manually
+      });
+
+      // Handle month/year change
+      $('#monthSelect, #yearSelect').change(function() {
+        updateSummaryCards();
+        table.ajax.reload();
+      });
+
+      // Handle category search
+      $('#searchBox').on('keyup', function() {
+        table.ajax.reload();
+      });
+
+      // Handle company change
+      $('#companySelect').change(function() {
+        const companyId = $(this).val();
+        
+        // Update session via AJAX
+        $.post('company_selector.php', { company_id: companyId })
+          .done(function(response) {
+            if (response.success) {
+              // Reload the table with new company data
+              table.ajax.reload();
+              // Update summary cards
+              updateSummaryCards();
+            }
+          });
+      });
+
+      // Function to update summary cards
+      function updateSummaryCards() {
+        const month = $('#monthSelect').val();
+        const year = $('#yearSelect').val();
+        const search = $('#searchBox').val();
+
+        fetch(`get_sales_summary.php?month=${month}&year=${year}&category_search=${search}`)
+          .then(response => response.json())
+          .then(data => {
+            $('#totalSales').text('₱' + parseFloat(data.total).toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }));
+          });
+      }
+
+      // Initial update of summary cards
+      updateSummaryCards();
+    });
+
+    // Modal Functions
+    function resetForm() {
+      const form = document.getElementById('saleForm');
+      form.reset();
+      delete form.dataset.id;
+      document.getElementById('modalTitle').textContent = 'Add New Sale';
+      loadCategories(); // Reload categories when form is reset
+    }
+
+    function openModal() {
+      resetForm();
+      document.getElementById('saleModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('saleModal').classList.add('hidden');
+      resetForm();
+    }
+
+    // Load categories function
+    function loadCategories() {
+      fetch('get_sales_categories.php')
+        .then(response => response.json())
+        .then(response => {
+          const categories = response.data || [];
+          const categorySelect = document.getElementById('category');
+          const addSaleBtn = document.getElementById('addSaleBtn');
+          const noCategoriesWarning = document.getElementById('noCategoriesWarning');
+          
+          // Clear existing options
+          categorySelect.innerHTML = '<option value="">Select a category...</option>';
+          
+          if (categories.length === 0) {
+            // Disable add sale button and show warning
+            addSaleBtn.disabled = true;
+            noCategoriesWarning.classList.remove('hidden');
+          } else {
+            // Enable add sale button and hide warning
+            addSaleBtn.disabled = false;
+            noCategoriesWarning.classList.add('hidden');
+            
+            // Add new options
+            categories.forEach(category => {
+              const option = document.createElement('option');
+              option.value = category;
+              option.textContent = category;
+              categorySelect.appendChild(option);
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Error loading categories:', error);
+          // Show error state
+          addSaleBtn.disabled = true;
+          noCategoriesWarning.classList.remove('hidden');
+          noCategoriesWarning.innerHTML = 'Error loading categories. Please try again later.';
+        });
+    }
+
+    // Add New Sale Button
+    document.getElementById('addSaleBtn').addEventListener('click', function() {
+      if (!this.disabled) {
+        openModal();
+      }
+    });
+
+    // Mobile Menu Toggle
     const menuBtn = document.getElementById('menuBtn');
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
@@ -140,7 +458,149 @@ $con->close();
       sidebar.classList.add('-translate-x-full');
       overlay.classList.add('hidden');
     });
-  </script>
 
+    // CRUD Functions
+    function editSale(id) {
+      // Fetch sale details and open modal
+      fetch(`get_sale.php?id=${id}`)
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('modalTitle').textContent = 'Edit Sale';
+          document.getElementById('date').value = data.date;
+          document.getElementById('particulars').value = data.particulars;
+          document.getElementById('category').value = data.category;
+          document.getElementById('amount').value = data.amount;
+          document.getElementById('saleForm').dataset.id = id;
+          document.getElementById('saleModal').classList.remove('hidden');
+        });
+    }
+
+    function deleteSale(id) {
+      if (confirm('Are you sure you want to delete this sale?')) {
+        fetch(`delete_sale.php?id=${id}`, { method: 'DELETE' })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              $('#salesTable').DataTable().ajax.reload();
+            } else {
+              alert('Error deleting sale');
+            }
+          });
+      }
+    }
+
+    // Form Submission
+    document.getElementById('saleForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const id = this.dataset.id;
+      
+      fetch(id ? `update_sale.php?id=${id}` : 'add_sale.php', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          closeModal();
+          $('#salesTable').DataTable().ajax.reload();
+          this.reset();
+          delete this.dataset.id;
+        } else {
+          alert('Error saving sale');
+        }
+      });
+    });
+
+    function openYearlySummaryModal() {
+      const year = $('#yearSelect').val();
+      const companyName = <?php echo json_encode(isset($_SESSION['selected_company_name']) ? $_SESSION['selected_company_name'] : ''); ?>;
+      $('#summaryYear').text(year + (companyName ? ' - ' + companyName : ''));
+      
+      fetch(`get_yearly_sales.php?year=${year}`)
+        .then(response => response.json())
+        .then(data => {
+          const content = document.getElementById('yearlySummaryContent');
+          
+          // Create table HTML
+          let tableHtml = `
+            <table class="min-w-full bg-white border border-gray-300">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 border-b text-left">Account Title</th>
+                  <th class="px-6 py-3 border-b text-right">Jan</th>
+                  <th class="px-6 py-3 border-b text-right">Feb</th>
+                  <th class="px-6 py-3 border-b text-right">Mar</th>
+                  <th class="px-6 py-3 border-b text-right">Apr</th>
+                  <th class="px-6 py-3 border-b text-right">May</th>
+                  <th class="px-6 py-3 border-b text-right">Jun</th>
+                  <th class="px-6 py-3 border-b text-right">Jul</th>
+                  <th class="px-6 py-3 border-b text-right">Aug</th>
+                  <th class="px-6 py-3 border-b text-right">Sep</th>
+                  <th class="px-6 py-3 border-b text-right">Oct</th>
+                  <th class="px-6 py-3 border-b text-right">Nov</th>
+                  <th class="px-6 py-3 border-b text-right">Dec</th>
+                  <th class="px-6 py-3 border-b text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>`;
+
+          // Add rows for each account title
+          data.forEach(row => {
+            tableHtml += `
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-3 border-b">${row.account_title}</td>
+                ${row.monthly_totals.map(amount => `
+                  <td class="px-6 py-3 border-b text-right">₱${parseFloat(amount).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}</td>
+                `).join('')}
+                <td class="px-6 py-3 border-b text-right font-bold">₱${parseFloat(row.total).toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}</td>
+              </tr>`;
+          });
+
+          // Add total row
+          const totals = data.reduce((acc, row) => {
+            row.monthly_totals.forEach((amount, i) => {
+              acc[i] = (acc[i] || 0) + parseFloat(amount);
+            });
+            return acc;
+          }, []);
+
+          const grandTotal = totals.reduce((a, b) => a + b, 0);
+
+          tableHtml += `
+              <tr class="bg-gray-100 font-bold">
+                <td class="px-6 py-3 border-b">TOTAL</td>
+                ${totals.map(total => `
+                  <td class="px-6 py-3 border-b text-right">₱${total.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}</td>
+                `).join('')}
+                <td class="px-6 py-3 border-b text-right">₱${grandTotal.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}</td>
+              </tr>
+            </tbody>
+          </table>`;
+
+          content.innerHTML = tableHtml;
+        });
+
+      document.getElementById('yearlySummaryModal').classList.remove('hidden');
+    }
+
+    function closeYearlySummaryModal() {
+      document.getElementById('yearlySummaryModal').classList.add('hidden');
+    }
+
+    document.getElementById('viewYearlySummaryBtn').addEventListener('click', openYearlySummaryModal);
+  </script>
 </body>
 </html>

@@ -54,6 +54,7 @@ $con->close();
           <li><a href="trial_balance.php" class="block py-2 px-3 rounded bg-[#e4fbeaff] text-[#1bb34cff] font-semibold">Trial Balance</a></li>
           <li><a href="income_statements.php" class="block py-2 px-3 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Income Statements</a></li>
           <li><a href="balance_sheet.php" class="block py-2 px-3 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Balance Sheet</a></li>
+          <li><a href="profile.php" class="block py-2 px-3 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Profile</a></li>
         </ul>
       </nav>
       <a href="logout.php" class="block py-2 px-8 rounded hover:bg-[#e4fbeaff] hover:text-[#1bb34cff]">Logout</a>
@@ -65,7 +66,12 @@ $con->close();
     <!-- Main Content -->
     <main class="flex-1 p-6 md:ml-64">
       <header class="flex justify-between items-center mb-6">
-        <h1 class="text-5xl font-semibold text-gray-800">Trial Balance</h1>
+        <div>
+          <h1 class="text-5xl font-semibold text-gray-800">Trial Balance</h1>
+          <?php if (isset($_SESSION['selected_company_name'])): ?>
+            <p class="text-lg text-gray-600 mt-2">for <?php echo htmlspecialchars($_SESSION['selected_company_name']); ?></p>
+          <?php endif; ?>
+        </div>
         <button id="menuBtn" class="md:hidden px-4 py-2 bg-blue-200 text-white rounded">
           <div class="text-2xl font-bold text-blue-500">☰</div>
         </button>
