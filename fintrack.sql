@@ -31,7 +31,7 @@ USE `fintrack`;
 --
 
 CREATE TABLE `users` (
-  `user_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL AUTO_INCREMENT,
   `first_name` varchar(50) NOT NULL,
   `last_name` varchar(50) NOT NULL,
   `email_address` varchar(100) NOT NULL,
@@ -40,7 +40,9 @@ CREATE TABLE `users` (
   `account_type` enum('Admin','Employee') NOT NULL DEFAULT 'Employee',
   `is_verified` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`user_id`),
+  UNIQUE KEY `email_address` (`email_address`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -50,42 +52,31 @@ CREATE TABLE `users` (
 --
 
 CREATE TABLE `companies` (
-  `company_id` int(11) NOT NULL,
+  `company_id` int(11) NOT NULL AUTO_INCREMENT,
   `company_name` varchar(100) NOT NULL,
   `address` text DEFAULT NULL,
   `contact_number` varchar(20) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`company_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `user_companies`
+-- Table structure for table `account_titles`
 --
 
-CREATE TABLE `user_companies` (
-  `user_id` int(11) NOT NULL,
+CREATE TABLE `account_titles` (
+  `title_id` int(11) NOT NULL AUTO_INCREMENT,
   `company_id` int(11) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `expenses`
---
-
-CREATE TABLE `expenses` (
-  `expense_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `company_id` int(11) NOT NULL,
-  `date` date NOT NULL,
-  `particulars` text NOT NULL,
-  `category` varchar(50) NOT NULL,
-  `amount` decimal(15,2) NOT NULL,
+  `title_name` varchar(100) NOT NULL,
+  `type` enum('expense','sale') NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`title_id`),
+  KEY `company_id` (`company_id`),
+  CONSTRAINT `account_titles_ibfk_1` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -113,19 +104,40 @@ CREATE TABLE `sales` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `account_titles`
+-- Table structure for table `user_companies`
 --
 
-CREATE TABLE `account_titles` (
-  `title_id` int(11) NOT NULL AUTO_INCREMENT,
+CREATE TABLE `user_companies` (
+  `user_id` int(11) NOT NULL,
   `company_id` int(11) NOT NULL,
-  `title_name` varchar(100) NOT NULL,
-  `type` enum('expense','sale') NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`user_id`,`company_id`),
+  KEY `company_id` (`company_id`),
+  CONSTRAINT `user_companies_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `user_companies_ibfk_2` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `expenses`
+--
+
+CREATE TABLE `expenses` (
+  `expense_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `company_id` int(11) NOT NULL,
+  `date` date NOT NULL,
+  `particulars` text NOT NULL,
+  `category` varchar(50) NOT NULL,
+  `amount` decimal(15,2) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`title_id`),
+  PRIMARY KEY (`expense_id`),
+  KEY `user_id` (`user_id`),
   KEY `company_id` (`company_id`),
-  CONSTRAINT `account_titles_ibfk_1` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE
+  CONSTRAINT `expenses_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `expenses_ibfk_2` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -203,81 +215,18 @@ CREATE TABLE `trial_balance` (
 -- --------------------------------------------------------
 
 --
--- Indexes for table `users`
---
-ALTER TABLE `users`
-  ADD PRIMARY KEY (`user_id`),
-  ADD UNIQUE KEY `email_address` (`email_address`);
-
---
--- Indexes for table `companies`
---
-ALTER TABLE `companies`
-  ADD PRIMARY KEY (`company_id`);
-
---
--- Indexes for table `user_companies`
---
-ALTER TABLE `user_companies`
-  ADD PRIMARY KEY (`user_id`,`company_id`),
-  ADD KEY `company_id` (`company_id`);
-
---
--- Indexes for table `expenses`
---
-ALTER TABLE `expenses`
-  ADD PRIMARY KEY (`expense_id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `company_id` (`company_id`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `users`
---
-ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `companies`
---
-ALTER TABLE `companies`
-  MODIFY `company_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `expenses`
---
-ALTER TABLE `expenses`
-  MODIFY `expense_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- Constraints for dumped tables
---
-
---
--- Constraints for table `user_companies`
---
-ALTER TABLE `user_companies`
-  ADD CONSTRAINT `user_companies_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `user_companies_ibfk_2` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Constraints for table `expenses`
---
-ALTER TABLE `expenses`
-  ADD CONSTRAINT `expenses_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `expenses_ibfk_2` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- --------------------------------------------------------
-
---
 -- Insert default admin user
 --
 
 INSERT INTO `users` (`first_name`, `last_name`, `email_address`, `password`, `account_type`, `is_verified`) VALUES
 ('Admin', 'User', 'admin@fintrack.com', '$2y$10$YourHashedPasswordHere', 'Admin', 1);
+
+--
+-- Insert default company for admin
+--
+
+INSERT INTO `companies` (`company_name`, `address`, `contact_number`) VALUES
+('Default Company', 'Default Address', '12345678');
 
 --
 -- Default account titles for expenses and sales

@@ -20,7 +20,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $update->bind_param("s", $code);
             if ($update->execute()) {
                 // Optionally, you can log in the user here or redirect to dashboard
-                header("Location: dashboard.php");
+                header("Location: profile.php");
                 exit;
             } else {
                 $error = "Something went wrong. Please try again.";
