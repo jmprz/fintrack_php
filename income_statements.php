@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 
 // Check if company is selected
 if (!isset($_SESSION['selected_company_id'])) {
-    header("Location: select_company.php");
+    header("Location: select_company_message.php");
     exit();
 }
 

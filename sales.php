@@ -9,6 +9,12 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Check if company is selected
+if (!isset($_SESSION['selected_company_id'])) {
+    header("Location: select_company_message.php");
+    exit();
+}
+
 // Fetch user details from DB
 $user_id = $_SESSION['user_id'];
 $stmt = $con->prepare("SELECT first_name, last_name FROM users WHERE user_id = ? AND is_verified = 1");
@@ -47,14 +53,6 @@ $companies_stmt = $con->prepare("
 $companies_stmt->bind_param("i", $user_id);
 $companies_stmt->execute();
 $companies_result = $companies_stmt->get_result();
-
-// If no company is selected and user has companies, select the first one
-if (!isset($_SESSION['selected_company_id']) && $companies_result->num_rows > 0) {
-    $first_company = $companies_result->fetch_assoc();
-    $_SESSION['selected_company_id'] = $first_company['company_id'];
-    $_SESSION['selected_company_name'] = $first_company['company_name'];
-    $companies_result->data_seek(0); // Reset result pointer
-}
 
 $stmt->close();
 $con->close();
