@@ -131,8 +131,76 @@ CREATE TABLE `account_titles` (
 -- --------------------------------------------------------
 
 --
--- Indexes for dumped tables
+-- Table structure for table `trial_balance`
 --
+
+CREATE TABLE `trial_balance` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `company_id` int(11) NOT NULL,
+  `year` int(4) NOT NULL,
+  `classification` ENUM(
+    'Cash', 'Cash Total', 
+    'Trade and other receivables', 'Trade and other receivables Total',
+    'Prepayments and other current assets', 'Prepayments and other current assets Total',
+    'Inventories', 'Inventories Total',
+    'Trade and other payables', 'Trade and other payables Total',
+    'Deferred tax assets', 'Deferred tax assets Total',
+    'Property and equipment – net', 'Property and equipment – net Total',
+    'Income Tax Payable', 'Income Tax Payable Total',
+    'Output VAT 12%-Goods Total',
+    'RETIREMENT BENEFIT OBLIGATIONS', 'RETIREMENT BENEFIT OBLIGATIONS Total',
+    'Share capital', 'Share capital Total',
+    'Retained earnings', 'Retained earnings Total',
+    'Revenues', 'Revenues Total',
+    'Cost of sales and services', 'Cost of sales and services Total',
+    'Marketing expenses', 'Marketing expenses Total',
+    'Administrative expenses', 'Administrative expenses Total',
+    'Income Tax Expense', 'Income Tax Expense Total',
+    'Other income', 'Other income Total',
+    'Dividend Payable', 'Dividend Payable Total',
+    'Loans payable-net of current portion', 'Loans payable-net of current portion Total'
+  ) NOT NULL,
+  `category` ENUM(
+    'Cash on hand', 'Cash in banks', 'Cash Equivalents',
+    'Outside parties', 'Other Receivable', 'Factory receivables',
+    'Advances to suppliers', 'Advances to officers and employees',
+    'Insurance and warranty claims', 'Passenger cars', 'Commercial vehicle',
+    'Parts, accessories and supplies', 'Input VAT', 'Creditable VAT',
+    'Prepaid tax', 'Prepaid expenses', 'Deferred Tax Asset', 'Security deposits',
+    'Land', 'Building and improvements', 'Machineries and tools',
+    'Transportation equipment', 'Computer equipment and peripherals',
+    'Office equipment', 'Accumulated Depreciation', 'Construction in Progress',
+    'Customer deposit', 'Government payables', 'Output Vat Payable',
+    'Withholding tax payable', 'Accrued expenses', 'RETIREMENT BENEFIT OBLIGATIONS',
+    'Share capital', 'Retained earnings', 'Sale of vehicles - net of discount',
+    'Sale of parts, net of discount', 'Sale of accessories and chemicals - net of discount',
+    'Sale of services', 'Cost of vehicles', 'Cost of parts',
+    'Cost of accessories and chemicals', 'Cost of services', 'Salaries and wages',
+    'Commission expense', 'Advertising expense', 'Rentals', 'Warranty',
+    'Government contributions', 'Employee benefits', 'Events', 'Utilities',
+    'Contractual', 'Contractual expense', 'Transportation and travel',
+    'Communications', 'Office supplies', 'Representation',
+    'Repairs and maintenance', 'Depreciation', 'Professional fees',
+    'Insurance', 'Taxes and licenses', 'Subscription dues',
+    'Income Tax Expense', 'Bank charges', 'Miscellaneous', 'Others', 'Other income'
+  ) DEFAULT NULL,
+  `account_code_sap` varchar(50) NOT NULL,
+  `description` varchar(255) NOT NULL,
+  `ending_balance` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `company_id` (`company_id`),
+  KEY `idx_year` (`year`),
+  KEY `idx_classification` (`classification`),
+  CONSTRAINT `trial_balance_ibfk_1` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE,
+  CONSTRAINT `check_total_category` CHECK (
+    (classification LIKE '%Total' AND category IS NULL) OR
+    (classification NOT LIKE '%Total' AND category IS NOT NULL)
+  )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
 
 --
 -- Indexes for table `users`
