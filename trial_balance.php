@@ -296,7 +296,7 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
             
             const formData = new FormData(entryForm);
             const id = formData.get('id');
-            const url = id ? 'update_trial_balance.php' : 'add_trial_balance.php';
+            const url = id ? 'trialBalanceActions/update_trial_balance.php' : 'trialBalanceActions/add_trial_balance.php';
 
             fetch(url, {
                 method: 'POST',
@@ -404,7 +404,7 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
         // Delete entry function
         function deleteEntry(id) {
             if (confirm('Are you sure you want to delete this entry?')) {
-                fetch('delete_trial_balance.php', {
+               fetch('trialBalanceActions/delete_trial_balance.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
