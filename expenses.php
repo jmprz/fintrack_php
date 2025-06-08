@@ -267,8 +267,8 @@ $con->close();
 
       <!-- Yearly Summary Modal -->
       <div id="yearlySummaryModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
-        <div class="flex items-center justify-center min-h-screen p-4">
-          <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-6xl max-h-[80vh] overflow-auto">
+        <div class="flex items-center justify-end min-h-screen p-4">
+          <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-5xl max-h-[80vh] overflow-auto">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-2xl font-bold">Yearly Expenses Summary (<span id="summaryYear"></span>)</h2>
               <button onclick="closeYearlySummaryModal()" class="text-gray-500 hover:text-gray-700">
