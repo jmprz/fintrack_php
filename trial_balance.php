@@ -155,9 +155,16 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
                 </div>
 
                 <!-- Add New Entry Button -->
-                <button id="addEntryBtn" class="bg-[#1bb34cff] text-white px-4 py-2 rounded hover:bg-[#17a044ff]">
-                    Add Entry
-                </button>
+                <div class="flex gap-4">
+                    <button id="addEntryBtn" class="bg-[#1bb34cff] text-white px-4 py-2 rounded hover:bg-[#17a044ff] mr-2">
+                        Add Entry
+                    </button>
+                    <!-- View Totals Button -->
+                    <button id="viewTotalsBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        View Totals
+                    </button>
+                </div>
+
               </div>
               <!-- No Categories Warning -->
               <div id="noCategoriesWarning" class="hidden mt-4 p-4 bg-yellow-50 text-yellow-800 rounded-md">
@@ -173,7 +180,7 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
                             <th>Category</th>
                             <th>Account Code</th>
                             <th>Description</th>
-                            <th class="text-right">Ending Balance</th>
+                            <th>Ending Balance</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -250,6 +257,30 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
         </div>
     </div>
 
+    <!-- Totals Modal -->
+    <div id="totalsModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Trial Balance Totals</h2>
+                <span class="close text-2xl cursor-pointer">&times;</span>
+            </div>
+            
+            <div class="overflow-y-auto max-h-[70vh]">
+                <table id="totalsTable" class="min-w-full text-sm">
+                    <thead class="bg-gray-200 text-gray-700 uppercase sticky top-0">
+                        <tr>
+                            <th class="px-4 py-2">Classification</th>
+                            <th class="px-4 py-2 text-right">Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="totalsTableBody">
+                        <!-- Totals will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Mobile menu toggle
         const menuBtn = document.getElementById('menuBtn');
@@ -287,6 +318,9 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
         window.onclick = function(event) {
             if (event.target == modal) {
                 modal.style.display = 'none';
+            }
+            if (event.target == totalsModal) {
+                totalsModal.style.display = 'none';
             }
         }
 
@@ -355,8 +389,7 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
                 { data: 'description' },
                 { 
                     data: 'ending_balance',
-                    render: formatAmount,
-                    className: 'text-right'
+                    render: formatAmount
                 },
                 {
                     data: 'id',
@@ -433,33 +466,43 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
 
         // Classifications and Categories data
         const classifications = [
-            'Cash', 'Cash Total',
-            'Trade and other receivables', 'Trade and other receivables Total',
-            'Prepayments and other current assets', 'Prepayments and other current assets Total',
-            'Inventories', 'Inventories Total',
-            'Trade and other payables', 'Trade and other payables Total',
-            'Deferred tax assets', 'Deferred tax assets Total',
-            'Property and equipment – net', 'Property and equipment – net Total',
-            'Income Tax Payable', 'Income Tax Payable Total',
-            'Output VAT 12%-Goods Total',
-            'RETIREMENT BENEFIT OBLIGATIONS', 'RETIREMENT BENEFIT OBLIGATIONS Total',
-            'Share capital', 'Share capital Total',
-            'Retained earnings', 'Retained earnings Total',
-            'Revenues', 'Revenues Total',
-            'Cost of sales and services', 'Cost of sales and services Total',
-            'Marketing expenses', 'Marketing expenses Total',
-            'Administrative expenses', 'Administrative expenses Total',
-            'Income Tax Expense', 'Income Tax Expense Total',
-            'Other income', 'Other income Total'
+            'Cash',
+            'Trade and other receivables',
+            'Prepayments and other current assets',
+            'Inventories',
+            'Trade and other payables',
+            'Deferred tax assets',
+            'Property and equipment - net',
+            'Income Tax Payable',
+            'Income Tax Expense',
+            'RETIREMENT BENEFIT OBLIGATIONS',
+            'Share capital',
+            'Retained earnings',
+            'Revenues',
+            'Cost of sales and services',
+            'Marketing expenses',
+            'Administrative expenses',
+            'Other income'
         ];
 
         const categoryMap = {
             'Cash': ['Cash on hand', 'Cash in banks', 'Cash Equivalents'],
-            'Trade and other receivables': ['Outside parties', 'Other Receivable', 'Factory receivables'],
-            'Prepayments and other current assets': ['Advances to suppliers', 'Advances to officers and employees', 'Insurance and warranty claims'],
+            'Trade and other receivables': ['Outside parties', 'Other Receivable', 'Factory receivables', 'Advances to officers and employees', 'Insurance and warranty claims'],
+            'Prepayments and other current assets': ['Advances to suppliers', 'Input VAT', 'Creditable VAT', 'Prepaid tax', 'Prepaid expenses', 'Security deposits'],
             'Inventories': ['Passenger cars', 'Commercial vehicle', 'Parts, accessories and supplies'],
-            'Trade and other payables': ['Customer deposit', 'Government payables', 'Output Vat Payable', 'Withholding tax payable', 'Accrued expenses'],
-            'Property and equipment – net': ['Land', 'Building and improvements', 'Machineries and tools', 'Transportation equipment', 'Computer equipment and peripherals', 'Office equipment', 'Accumulated Depreciation', 'Construction in Progress']
+            'Trade and other payables': ['Outside parties', 'Customer deposit', 'Output VAT Payable', 'Withholding tax payable', 'Accured expenses'],
+            'Deferred tax assets': ['Deffered Tax Asset'],
+            'Property and equipment - net': ['Land', 'Building and improvements', 'Machineries and tools', 'Transportation equipment', 'Computer equipment and peripherals', 'Office equipment', 'Accumulated Depreciation', 'Construction in Progress'],
+            'Income Tax Payable': ['Government payables'],
+            'Income Tax Expense': ['Income Tax Expense'],
+            'RETIREMENT BENEFIT OBLIGATIONS': ['RETIREMENT BENEFIT OBLIGATIONS'],
+            'Share capital': ['Share capital'],
+            'Retained earnings': ['Retained earnings'],
+            'Revenues': ['Sale of vehicles - net of discount', 'Sale of accessories and chemicals - net of discount', 'Sale of parts - net of discount', 'Sale of services'],
+            'Cost of sales and services': ['Cost of vehicles', 'Cost of parts', 'Cost of accessories and chemicals', 'Cost of services', 'Utilities', 'Contractual', 'Communications', 'Depreciation', 'Others'],
+            'Marketing expenses': ['Salaries and wages', 'Commission expense', 'Advertising expense', 'Warranty'],
+            'Administrative expenses': ['Rentals', 'Salaries and wages', 'Government contributions', 'Employee benefits', 'Events', 'Contractual expense', 'Utilities', 'Transportation and travel', 'Communications', 'Office supplies', 'Representation', 'Repairs and maintenance', 'Depreciation', 'Professional fees', 'Insurance', 'Taxes and licenses', 'Subscription dues', 'Bank charges', 'Miscellaneous'],
+            'Other income': ['Other income']
         };
 
         // Populate classification dropdown
@@ -474,17 +517,85 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
             const categorySelect = document.getElementById('category');
             categorySelect.innerHTML = '<option value="">Select Category</option>'; // Reset with default option
             
-            if (this.value.includes('Total')) {
-                categorySelect.disabled = true;
-                categorySelect.required = false;
-            } else {
-                categorySelect.disabled = false;
-                categorySelect.required = true;
-                const categories = categoryMap[this.value] || [];
-                categories.forEach(category => {
-                    const option = new Option(category, category);
-                    categorySelect.add(option);
-                });
+            categorySelect.disabled = false;
+            categorySelect.required = true;
+            const categories = categoryMap[this.value] || [];
+            categories.forEach(category => {
+                const option = new Option(category, category);
+                categorySelect.add(option);
+            });
+        });
+
+        // Totals Modal functionality
+        const totalsModal = document.getElementById('totalsModal');
+        const viewTotalsBtn = document.getElementById('viewTotalsBtn');
+        const totalsTableBody = document.getElementById('totalsTableBody');
+        const totalsCloseBtn = totalsModal.querySelector('.close');
+
+        viewTotalsBtn.onclick = function() {
+            calculateAndDisplayTotals();
+            totalsModal.style.display = 'block';
+        }
+
+        totalsCloseBtn.onclick = function() {
+            totalsModal.style.display = 'none';
+        }
+
+        // Update window click handler
+        window.onclick = function(event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+            if (event.target === totalsModal) {
+                totalsModal.style.display = 'none';
+            }
+        }
+
+        // Remove totals modal from general close buttons
+        closeButtons.forEach(button => {
+            button.onclick = function() {
+                if (this.closest('#entryModal')) {
+                    modal.style.display = 'none';
+                }
+            }
+        });
+
+        function calculateAndDisplayTotals() {
+            const currentData = table.data().toArray();
+            const totals = {};
+            
+            // Initialize totals for each classification
+            classifications.forEach(classification => {
+                totals[classification] = 0;
+            });
+
+            // Calculate totals
+            currentData.forEach(row => {
+                if (totals.hasOwnProperty(row.classification)) {
+                    totals[row.classification] += parseFloat(row.ending_balance) || 0;
+                }
+            });
+
+            // Clear existing totals
+            totalsTableBody.innerHTML = '';
+
+            // Display totals
+            Object.entries(totals).forEach(([classification, total]) => {
+                const row = document.createElement('tr');
+                row.className = 'border-b';
+                row.innerHTML = `
+                    <td class="px-4 py-2">${classification}</td>
+                    <td class="px-4 py-2 text-right">${formatAmount(total)}</td>
+                `;
+                totalsTableBody.appendChild(row);
+            });
+        }
+
+        // Update year change handler to recalculate totals if modal is open
+        $('#yearSelect').on('change', function() {
+            table.ajax.reload(null, false);
+            if (totalsModal.style.display === 'block') {
+                calculateAndDisplayTotals();
             }
         });
     </script>

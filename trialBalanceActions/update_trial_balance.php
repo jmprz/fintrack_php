@@ -26,11 +26,6 @@ $account_code_sap = $_POST['account_code_sap'];
 $description = $_POST['description'];
 $ending_balance = floatval($_POST['ending_balance']);
 
-// Validate category based on classification
-if (strpos($classification, 'Total') !== false && $category !== null) {
-    die(json_encode(['success' => false, 'message' => 'Category must be null for Total classifications']));
-}
-
 try {
     // First verify the entry belongs to the current company
     $verify_query = "SELECT id FROM trial_balance WHERE id = ? AND company_id = ?";
