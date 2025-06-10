@@ -192,6 +192,8 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
         .negative-amount { color: red; }
         .calculated-row { font-weight: bold; }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body class="bg-gray-100 font-sans">
 
@@ -220,12 +222,6 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
         <!-- Main Content -->
         <main class="flex-1 p-6 md:ml-64">
             <header class="flex justify-between items-center mb-6">
-                <div>
-                    <h1 class="text-5xl font-semibold text-gray-800">Income Statements</h1>
-                    <?php if (isset($_SESSION['selected_company_name'])): ?>
-                        <p class="text-lg text-gray-600 mt-2">for <?php echo htmlspecialchars($_SESSION['selected_company_name']); ?></p>
-                    <?php endif; ?>
-                </div>
                 <button id="menuBtn" class="md:hidden px-4 py-2 bg-blue-200 text-white rounded">
                     <div class="text-2xl font-bold text-blue-500">☰</div>
                 </button>
@@ -247,8 +243,17 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
                             ?>
                         </select>
                     </div>
+                     <button id="printPdfBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                     Print
+                     </button>
                 </div>
             </div>
+
+<div id="printableArea" class="p-6 bg-white">
+    <h2 class="text-2xl font-bold text-center mb-2">Income Statement</h2>
+    <?php if (isset($_SESSION['selected_company_name'])): ?>
+        <h3 class="text-xl text-center mb-4">for <?php echo htmlspecialchars($_SESSION['selected_company_name']); ?></h3>
+    <?php endif; ?>
 
             <!-- Income Statement Table -->
             <div class="overflow-x-auto bg-white rounded shadow-md p-4">
@@ -261,6 +266,7 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
                         </tr>
                     </thead>
                 </table>
+            </div>
             </div>
         </main>
     </div>
@@ -360,5 +366,30 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
         // Initial header update
         updateTableHeaders();
     </script>
+    <script>
+document.getElementById('printPdfBtn').addEventListener('click', async function () {
+    const { jsPDF } = window.jspdf;
+    const printableElement = document.getElementById('printableArea');
+    const selectedCompanyName = "<?php echo isset($_SESSION['selected_company_name']) ? preg_replace('/[^a-zA-Z0-9]/', '_', $_SESSION['selected_company_name']) : 'Company'; ?>";
+    html2canvas(printableElement, {
+        scale: 2,
+        useCORS: true
+    }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+
+        // Create PDF with dimensions matching canvas
+        const pdf = new jsPDF({
+            orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
+        });
+
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save(`Income_Statement_${selectedCompanyName}_${$('#yearSelect').val()}.pdf`);
+    });
+});
+
+</script>
+
 </body>
 </html>
