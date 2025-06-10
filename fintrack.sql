@@ -216,6 +216,29 @@ CREATE TABLE `trial_balance` (
 
 -- --------------------------------------------------------
 
+--
+-- Insert default admin user
+--
+
+INSERT INTO `users` (`first_name`, `last_name`, `email_address`, `password`, `account_type`, `is_verified`) VALUES
+('Admin', 'User', 'admin@fintrack.com', '$2y$10$YourHashedPasswordHere', 'Admin', 1);
+
+--
+-- Insert default company for admin
+--
+
+INSERT INTO `companies` (`company_name`, `address`, `contact_number`) VALUES
+('Default Company', 'Default Address', '12345678');
+
+--
+-- Link admin user to default company
+--
+
+INSERT INTO `user_companies` (`user_id`, `company_id`) VALUES (1, 1);
+
+--
+-- Default account titles for expenses and sales
+--
 
 INSERT INTO `account_titles` (`company_id`, `title_name`, `type`) VALUES
 (1, 'PROF FEE', 'expense'),
