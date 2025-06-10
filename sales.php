@@ -178,7 +178,7 @@ $con->close();
       </div>
 
       <!-- Sales Table -->
-      <div class="bg-white rounded-lg shadow-md overflow-hidden">
+      <div class="bg-white rounded-lg shadow-md overflow-hidden p-4">
         <div class="overflow-x-auto">
           <table id="salesTable" class="min-w-full">
             <thead class="bg-gray-50">

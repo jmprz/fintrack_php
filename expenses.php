@@ -197,7 +197,7 @@ $con->close();
       </div>
 
       <!-- Expenses Table -->
-      <div class="bg-white rounded-lg shadow-md overflow-hidden">
+      <div class="bg-white rounded-lg shadow-md overflow-hidden p-4">
         <div class="overflow-x-auto">
           <table id="expensesTable" class="min-w-full">
             <thead class="bg-gray-50">

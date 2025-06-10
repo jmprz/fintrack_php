@@ -262,7 +262,7 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
         <div class="modal-content">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-bold">Trial Balance Totals</h2>
-                <span class="close text-2xl cursor-pointer">&times;</span>
+                <span class="close">&times;</span>
             </div>
             
             <div class="overflow-y-auto max-h-[70vh]">
@@ -299,9 +299,15 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
 
         // Modal functionality
         const modal = document.getElementById('entryModal');
+        const totalsModal = document.getElementById('totalsModal');
         const addEntryBtn = document.getElementById('addEntryBtn');
-        const closeButtons = document.querySelectorAll('.close, .close-modal');
+        const viewTotalsBtn = document.getElementById('viewTotalsBtn');
+        const totalsTableBody = document.getElementById('totalsTableBody');
         const entryForm = document.getElementById('entryForm');
+        
+        // Close button handlers
+        const entryModalCloseButtons = modal.querySelectorAll('.close, .close-modal');
+        const totalsModalCloseButton = totalsModal.querySelector('.close');
 
         addEntryBtn.onclick = function() {
             document.getElementById('modalTitle').textContent = 'Add Trial Balance Entry';
@@ -309,17 +315,29 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
             modal.style.display = 'block';
         }
 
-        closeButtons.forEach(button => {
+        viewTotalsBtn.onclick = function() {
+            calculateAndDisplayTotals();
+            totalsModal.style.display = 'block';
+        }
+
+        // Entry modal close buttons
+        entryModalCloseButtons.forEach(button => {
             button.onclick = function() {
                 modal.style.display = 'none';
             }
         });
 
+        // Totals modal close button
+        totalsModalCloseButton.onclick = function() {
+            totalsModal.style.display = 'none';
+        }
+
+        // Window click handler for both modals
         window.onclick = function(event) {
-            if (event.target == modal) {
+            if (event.target === modal) {
                 modal.style.display = 'none';
             }
-            if (event.target == totalsModal) {
+            if (event.target === totalsModal) {
                 totalsModal.style.display = 'none';
             }
         }
@@ -524,40 +542,6 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQ
                 const option = new Option(category, category);
                 categorySelect.add(option);
             });
-        });
-
-        // Totals Modal functionality
-        const totalsModal = document.getElementById('totalsModal');
-        const viewTotalsBtn = document.getElementById('viewTotalsBtn');
-        const totalsTableBody = document.getElementById('totalsTableBody');
-        const totalsCloseBtn = totalsModal.querySelector('.close');
-
-        viewTotalsBtn.onclick = function() {
-            calculateAndDisplayTotals();
-            totalsModal.style.display = 'block';
-        }
-
-        totalsCloseBtn.onclick = function() {
-            totalsModal.style.display = 'none';
-        }
-
-        // Update window click handler
-        window.onclick = function(event) {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-            if (event.target === totalsModal) {
-                totalsModal.style.display = 'none';
-            }
-        }
-
-        // Remove totals modal from general close buttons
-        closeButtons.forEach(button => {
-            button.onclick = function() {
-                if (this.closest('#entryModal')) {
-                    modal.style.display = 'none';
-                }
-            }
         });
 
         function calculateAndDisplayTotals() {
