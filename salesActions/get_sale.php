@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'connection.php';
+require_once '../connection.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -26,31 +26,35 @@ if (!$sale_id) {
     exit();
 }
 
-// Verify sale belongs to user's company
-$verify_stmt = $con->prepare("
-    SELECT 1 FROM sales 
-    WHERE sale_id = ? AND company_id = ?
+// Get sale details
+$stmt = $con->prepare("
+    SELECT s.*, at.title_name as category
+    FROM sales s
+    JOIN account_titles at ON s.title_id = at.title_id
+    WHERE s.sale_id = ? AND s.company_id = ?
 ");
-$verify_stmt->bind_param("ii", $sale_id, $company_id);
-$verify_stmt->execute();
-$verify_result = $verify_stmt->get_result();
 
-if ($verify_result->num_rows === 0) {
+$stmt->bind_param("ii", $sale_id, $company_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows === 0) {
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Sale not found or access denied']);
-    $verify_stmt->close();
+    $stmt->close();
     $con->close();
     exit();
 }
-$verify_stmt->close();
 
-// Delete the sale
-$stmt = $con->prepare("DELETE FROM sales WHERE sale_id = ? AND company_id = ?");
-$stmt->bind_param("ii", $sale_id, $company_id);
-$success = $stmt->execute();
-
+$sale = $result->fetch_assoc();
 header('Content-Type: application/json');
-echo json_encode(['success' => $success]);
+echo json_encode([
+    'success' => true,
+    'date' => $sale['date'],
+    'particulars' => $sale['particulars'],
+    'category' => $sale['category'],
+    'amount' => $sale['amount']
+]);
 
 $stmt->close();
 $con->close();

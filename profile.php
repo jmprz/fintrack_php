@@ -435,7 +435,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         function editCompany(companyId) {
             // Fetch company details
-            fetch(`get_company.php?id=${companyId}`)
+            fetch(`profileActions/get_company.php?id=${companyId}`)
                 .then(response => response.json())
                 .then(company => {
                     document.getElementById('edit_company_id').value = company.company_id;
@@ -452,7 +452,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         function deleteCompany(companyId) {
             if (confirm('Are you sure you want to delete this company? This action cannot be undone.')) {
-                fetch('delete_company.php', {
+                fetch('profileActions/delete_company.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -475,7 +475,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             e.preventDefault();
             const formData = new FormData(this);
 
-            fetch('update_company.php', {
+            fetch('profileActions/update_company.php', {
                 method: 'POST',
                 body: formData
             })
@@ -503,7 +503,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             document.getElementById('selectedCompanyName').textContent = companyName;
             
             // Load account titles
-            fetch(`get_company_titles.php?company_id=${companyId}&type=${type}`)
+            fetch(`profileActions/get_company_titles.php?company_id=${companyId}&type=${type}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
@@ -580,7 +580,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         function editTitle(titleId) {
-            fetch(`get_title.php?id=${titleId}`)
+            fetch(`profileActions/get_title.php?id=${titleId}`)
                 .then(response => response.json())
                 .then(title => {
                     document.getElementById('titleModalHeader').textContent = 'Edit Category';
@@ -594,7 +594,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         function deleteTitle(titleId) {
             if (confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
-                fetch('delete_title.php', {
+                fetch('profileActions/delete_title.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -623,7 +623,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             const formData = new FormData(this);
             const titleId = formData.get('title_id');
 
-            fetch(titleId ? 'update_title.php' : 'add_title.php', {
+            fetch(titleId ? 'profileActions/update_title.php' : 'profileActions/add_title.php', {
                 method: 'POST',
                 body: formData
             })

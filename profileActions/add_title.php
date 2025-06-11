@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'connection.php';
+require_once '../connection.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -15,47 +15,44 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
-$title_id = intval($_POST['title_id']);
+$company_id = intval($_POST['company_id']);
 $user_id = $_SESSION['user_id'];
 
-// Verify user has access to this title's company
+// Verify user has access to this company
 $verify_stmt = $con->prepare("
-    SELECT 1 
-    FROM account_titles t
-    JOIN companies c ON t.company_id = c.company_id
-    JOIN user_companies uc ON c.company_id = uc.company_id
-    WHERE t.title_id = ? AND uc.user_id = ?
+    SELECT 1 FROM user_companies 
+    WHERE user_id = ? AND company_id = ?
 ");
-$verify_stmt->bind_param("ii", $title_id, $user_id);
+$verify_stmt->bind_param("ii", $user_id, $company_id);
 $verify_stmt->execute();
 $verify_result = $verify_stmt->get_result();
 
 if ($verify_result->num_rows === 0) {
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Title not found or access denied']);
+    echo json_encode(['success' => false, 'message' => 'Company not found or access denied']);
     $verify_stmt->close();
     $con->close();
     exit();
 }
 $verify_stmt->close();
 
-// Update account title
+// Add new account title
 $stmt = $con->prepare("
-    UPDATE account_titles 
-    SET title_name = ?
-    WHERE title_id = ?
+    INSERT INTO account_titles (company_id, title_name, type)
+    VALUES (?, ?, ?)
 ");
 
 $title_name = trim($_POST['title_name']);
+$type = $_POST['type'];
 
-$stmt->bind_param("si", $title_name, $title_id);
+$stmt->bind_param("iss", $company_id, $title_name, $type);
 $success = $stmt->execute();
 
 header('Content-Type: application/json');
 if ($success) {
     echo json_encode(['success' => true]);
 } else {
-    echo json_encode(['success' => false, 'message' => 'Error updating category']);
+    echo json_encode(['success' => false, 'message' => 'Error adding category']);
 }
 
 $stmt->close();

@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'connection.php';
+require_once '../connection.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -9,21 +9,20 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+$company_id = isset($_SESSION['selected_company_id']) ? $_SESSION['selected_company_id'] : null;
+
+if (!$company_id) {
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+    echo json_encode(['success' => false, 'message' => 'No company selected']);
     exit();
 }
-
-$company_id = intval($_POST['company_id']);
-$user_id = $_SESSION['user_id'];
 
 // Verify user has access to this company
 $verify_stmt = $con->prepare("
     SELECT 1 FROM user_companies 
     WHERE user_id = ? AND company_id = ?
 ");
-$verify_stmt->bind_param("ii", $user_id, $company_id);
+$verify_stmt->bind_param("ii", $_SESSION['user_id'], $company_id);
 $verify_stmt->execute();
 $verify_result = $verify_stmt->get_result();
 
@@ -36,24 +35,25 @@ if ($verify_result->num_rows === 0) {
 }
 $verify_stmt->close();
 
-// Add new account title
+// Get sales categories for the company
 $stmt = $con->prepare("
-    INSERT INTO account_titles (company_id, title_name, type)
-    VALUES (?, ?, ?)
+    SELECT title_name 
+    FROM account_titles 
+    WHERE company_id = ? AND type = 'sale'
+    ORDER BY title_name
 ");
 
-$title_name = trim($_POST['title_name']);
-$type = $_POST['type'];
+$stmt->bind_param("i", $company_id);
+$stmt->execute();
+$result = $stmt->get_result();
 
-$stmt->bind_param("iss", $company_id, $title_name, $type);
-$success = $stmt->execute();
+$categories = [];
+while ($row = $result->fetch_assoc()) {
+    $categories[] = $row['title_name'];
+}
 
 header('Content-Type: application/json');
-if ($success) {
-    echo json_encode(['success' => true]);
-} else {
-    echo json_encode(['success' => false, 'message' => 'Error adding category']);
-}
+echo json_encode(['success' => true, 'data' => $categories]);
 
 $stmt->close();
 $con->close();

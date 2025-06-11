@@ -295,7 +295,7 @@ $con->close();
 
       const table = $('#expensesTable').DataTable({
         ajax: {
-          url: 'get_expenses.php',
+          url: 'expensesActions/get_expenses.php',
           data: function(d) {
             d.month = $('#monthSelect').val();
             d.year = $('#yearSelect').val();
@@ -381,7 +381,7 @@ $con->close();
         const year = $('#yearSelect').val();
         const search = $('#searchBox').val();
 
-        fetch(`get_summary.php?month=${month}&year=${year}&category_search=${search}`)
+        fetch(`expensesActions/get_summary.php?month=${month}&year=${year}&category_search=${search}`)
           .then(response => response.json())
           .then(data => {
             $('#totalExpenses').text('₱' + parseFloat(data.total).toLocaleString('en-US', {
@@ -420,7 +420,7 @@ $con->close();
 
     // Load categories function
     function loadCategories() {
-      fetch('get_expense_categories.php')
+      fetch('expensesActions/get_expense_categories.php')
         .then(response => response.json())
         .then(response => {
           const categories = response.data || [];
@@ -483,7 +483,7 @@ $con->close();
     // CRUD Functions
     function editExpense(id) {
       // Fetch expense details and open modal
-      fetch(`get_expense.php?id=${id}`)
+      fetch(`expensesActions/get_expense.php?id=${id}`)
         .then(response => response.json())
         .then(data => {
           document.getElementById('modalTitle').textContent = 'Edit Expense';
@@ -498,7 +498,7 @@ $con->close();
 
     function deleteExpense(id) {
       if (confirm('Are you sure you want to delete this expense?')) {
-        fetch(`delete_expense.php?id=${id}`, { method: 'DELETE' })
+        fetch(`expensesActions/delete_expense.php?id=${id}`, { method: 'DELETE' })
           .then(response => response.json())
           .then(data => {
             if (data.success) {
@@ -516,7 +516,7 @@ $con->close();
       const formData = new FormData(this);
       const id = this.dataset.id;
       
-      fetch(id ? `update_expense.php?id=${id}` : 'add_expense.php', {
+      fetch(id ? `expensesActions/update_expense.php?id=${id}` : 'expensesActions/add_expense.php', {
         method: 'POST',
         body: formData
       })
@@ -538,7 +538,7 @@ $con->close();
       const companyName = <?php echo json_encode(isset($_SESSION['selected_company_name']) ? $_SESSION['selected_company_name'] : ''); ?>;
       $('#summaryYear').text(year + (companyName ? ' - ' + companyName : ''));
       
-      fetch(`get_yearly_summary.php?year=${year}`)
+      fetch(`expensesActions/get_yearly_summary.php?year=${year}`)
         .then(response => response.json())
         .then(data => {
           const content = document.getElementById('yearlySummaryContent');

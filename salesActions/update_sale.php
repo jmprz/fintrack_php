@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'connection.php';
+require_once '../connection.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -16,6 +16,33 @@ if (!$company_id) {
     echo json_encode(['success' => false, 'message' => 'No company selected']);
     exit();
 }
+
+// Get sale ID from URL
+$sale_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+if (!$sale_id) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Invalid sale ID']);
+    exit();
+}
+
+// Verify sale belongs to user's company
+$verify_stmt = $con->prepare("
+    SELECT 1 FROM sales 
+    WHERE sale_id = ? AND company_id = ?
+");
+$verify_stmt->bind_param("ii", $sale_id, $company_id);
+$verify_stmt->execute();
+$verify_result = $verify_stmt->get_result();
+
+if ($verify_result->num_rows === 0) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Sale not found or access denied']);
+    $verify_stmt->close();
+    $con->close();
+    exit();
+}
+$verify_stmt->close();
 
 // Get POST data
 $date = $_POST['date'] ?? null;
@@ -51,13 +78,14 @@ if ($title_result->num_rows === 0) {
 $title_id = $title_result->fetch_assoc()['title_id'];
 $title_stmt->close();
 
-// Insert the sale
+// Update the sale
 $stmt = $con->prepare("
-    INSERT INTO sales (company_id, title_id, date, particulars, amount) 
-    VALUES (?, ?, ?, ?, ?)
+    UPDATE sales 
+    SET title_id = ?, date = ?, particulars = ?, amount = ? 
+    WHERE sale_id = ? AND company_id = ?
 ");
 
-$stmt->bind_param("iissd", $company_id, $title_id, $date, $particulars, $amount);
+$stmt->bind_param("issdii", $title_id, $date, $particulars, $amount, $sale_id, $company_id);
 $success = $stmt->execute();
 
 header('Content-Type: application/json');
