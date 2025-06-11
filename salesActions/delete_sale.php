@@ -26,32 +26,62 @@ if (!$sale_id) {
     exit();
 }
 
-// Verify sale belongs to user's company
-$verify_stmt = $con->prepare("
-    SELECT 1 FROM sales 
-    WHERE sale_id = ? AND company_id = ?
-");
-$verify_stmt->bind_param("ii", $sale_id, $company_id);
-$verify_stmt->execute();
-$verify_result = $verify_stmt->get_result();
+// Start transaction
+$con->begin_transaction();
 
-if ($verify_result->num_rows === 0) {
+try {
+    // First, get the sale data before deletion
+    $data_stmt = $con->prepare("
+        SELECT s.*, at.title_name as category
+        FROM sales s
+        JOIN account_titles at ON s.title_id = at.title_id
+        WHERE s.sale_id = ? AND s.company_id = ?
+    ");
+    $data_stmt->bind_param("ii", $sale_id, $company_id);
+    $data_stmt->execute();
+    $data_result = $data_stmt->get_result();
+    
+    if ($data_result->num_rows === 0) {
+        throw new Exception('Sale not found or access denied');
+    }
+    
+    $sale_data = $data_result->fetch_assoc();
+    $data_stmt->close();
+
+    // Delete the sale
+    $delete_stmt = $con->prepare("DELETE FROM sales WHERE sale_id = ? AND company_id = ?");
+    $delete_stmt->bind_param("ii", $sale_id, $company_id);
+    $success = $delete_stmt->execute();
+    $delete_stmt->close();
+
+    if ($success) {
+        // Record in work history
+        $details = json_encode([
+            'sale_id' => $sale_id,
+            'deleted_data' => [
+                'date' => $sale_data['date'],
+                'particulars' => $sale_data['particulars'],
+                'category' => $sale_data['category'],
+                'amount' => $sale_data['amount']
+            ]
+        ]);
+
+        $history_stmt = $con->prepare("INSERT INTO user_work_history (user_id, action_type, details) VALUES (?, 'sale_deleted', ?)");
+        $history_stmt->bind_param("is", $_SESSION['user_id'], $details);
+        $history_stmt->execute();
+        $history_stmt->close();
+
+        $con->commit();
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'message' => 'Sale deleted successfully']);
+    } else {
+        throw new Exception("Failed to delete sale");
+    }
+} catch (Exception $e) {
+    $con->rollback();
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Sale not found or access denied']);
-    $verify_stmt->close();
-    $con->close();
-    exit();
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
-$verify_stmt->close();
 
-// Delete the sale
-$stmt = $con->prepare("DELETE FROM sales WHERE sale_id = ? AND company_id = ?");
-$stmt->bind_param("ii", $sale_id, $company_id);
-$success = $stmt->execute();
-
-header('Content-Type: application/json');
-echo json_encode(['success' => $success]);
-
-$stmt->close();
 $con->close();
 ?> 

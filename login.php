@@ -29,6 +29,16 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
                         setcookie('user_id', $user_data['user_id'], time() + (86400 * 30), "/");
                     }
 
+                    // Record login activity
+                    $ip_address = $_SERVER['REMOTE_ADDR'];
+                    $user_agent = $_SERVER['HTTP_USER_AGENT'];
+                    
+                    $activity_stmt = $con->prepare("INSERT INTO login_activities (user_id, ip_address, user_agent) VALUES (?, ?, ?)");
+                    $activity_stmt->bind_param("iss", $user_data['user_id'], $ip_address, $user_agent);
+                    $activity_stmt->execute();
+                    $_SESSION['login_activity_id'] = $activity_stmt->insert_id;
+                    $activity_stmt->close();
+
                     if ($user_data['account_type'] === 'Admin') {
                         $_SESSION['is_admin'] = 1;
                         header("Location: admin_dashboard.php");

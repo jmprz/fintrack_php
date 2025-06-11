@@ -36,7 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $mail->setFrom('fintrack.system.ph@gmail.com', 'FinTrack');
             $mail->addAddress($email, $user['first_name']);
 
-            $resetLink = "http://localhost/fintrack/reset_password.php?token=" . $token;
+            $resetLink = "http://localhost/fintrack_php/reset_password.php?token=" . $token;
 
             $mail->isHTML(true);
             $mail->Subject = 'Reset Your Password - FinTrack';

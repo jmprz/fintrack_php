@@ -43,40 +43,93 @@ if ($verify_result->num_rows === 0) {
 }
 $verify_stmt->close();
 
-// Debug log
-error_log("Attempting to update expense_id: $expense_id for user_id: $user_id and company_id: $company_id");
-error_log("New values - Date: $date, Particulars: $particulars, Category: $category, Amount: $amount");
+// Start transaction
+$con->begin_transaction();
 
-// First, verify the expense exists and belongs to this user and company
-$check_stmt = $con->prepare("SELECT expense_id FROM expenses WHERE expense_id = ? AND user_id = ? AND company_id = ? LIMIT 1");
-$check_stmt->bind_param("iii", $expense_id, $user_id, $company_id);
-$check_stmt->execute();
-$check_result = $check_stmt->get_result();
+try {
+    // First, get the old expense data
+    $old_data_stmt = $con->prepare("
+        SELECT 
+            e.*,
+            at.title_name as category
+        FROM expenses e
+        JOIN account_titles at ON e.account_title_id = at.title_id
+        WHERE e.expense_id = ? AND e.user_id = ? AND e.company_id = ? 
+        LIMIT 1
+    ");
+    $old_data_stmt->bind_param("iii", $expense_id, $user_id, $company_id);
+    $old_data_stmt->execute();
+    $old_result = $old_data_stmt->get_result();
+    
+    if ($old_result->num_rows === 0) {
+        throw new Exception('Expense not found or access denied');
+    }
+    
+    $old_data = $old_result->fetch_assoc();
+    $old_data_stmt->close();
 
-if ($check_result->num_rows === 0) {
+    // Get account_title_id for the new category
+    $title_stmt = $con->prepare("
+        SELECT title_id 
+        FROM account_titles 
+        WHERE company_id = ? AND title_name = ? AND type = 'expense'
+        LIMIT 1
+    ");
+    $title_stmt->bind_param("is", $company_id, $category);
+    $title_stmt->execute();
+    $title_result = $title_stmt->get_result();
+
+    if ($title_result->num_rows === 0) {
+        throw new Exception('Invalid expense category');
+    }
+
+    $account_title_id = $title_result->fetch_assoc()['title_id'];
+    $title_stmt->close();
+
+    // Update the expense
+    $update_stmt = $con->prepare("
+        UPDATE expenses 
+        SET date = ?, particulars = ?, account_title_id = ?, amount = ? 
+        WHERE expense_id = ? AND user_id = ? AND company_id = ?
+    ");
+    $update_stmt->bind_param("ssiiii", $date, $particulars, $account_title_id, $amount, $expense_id, $user_id, $company_id);
+    $success = $update_stmt->execute();
+    $update_stmt->close();
+
+    if ($success) {
+        // Record in work history
+        $details = json_encode([
+            'expense_id' => $expense_id,
+            'old_data' => [
+                'date' => $old_data['date'],
+                'particulars' => $old_data['particulars'],
+                'category' => $old_data['category'],
+                'amount' => $old_data['amount']
+            ],
+            'new_data' => [
+                'date' => $date,
+                'particulars' => $particulars,
+                'category' => $category,
+                'amount' => $amount
+            ]
+        ]);
+
+        $history_stmt = $con->prepare("INSERT INTO user_work_history (user_id, action_type, details) VALUES (?, 'expense_updated', ?)");
+        $history_stmt->bind_param("is", $user_id, $details);
+        $history_stmt->execute();
+        $history_stmt->close();
+
+        $con->commit();
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true]);
+    } else {
+        throw new Exception("Failed to update expense");
+    }
+} catch (Exception $e) {
+    $con->rollback();
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'error' => 'Expense not found or not authorized']);
-    $check_stmt->close();
-    $con->close();
-    exit();
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
-$check_stmt->close();
 
-// Update the specific expense
-$stmt = $con->prepare("UPDATE expenses SET date = ?, particulars = ?, category = ?, amount = ? WHERE expense_id = ? AND user_id = ? AND company_id = ? LIMIT 1");
-$stmt->bind_param("sssdiii", $date, $particulars, $category, $amount, $expense_id, $user_id, $company_id);
-
-$success = $stmt->execute();
-
-// Debug log
-error_log("Update result: " . ($success ? "Success" : "Failed") . ", Affected rows: " . $stmt->affected_rows);
-
-header('Content-Type: application/json');
-echo json_encode([
-    'success' => $success && $stmt->affected_rows > 0,
-    'message' => $success && $stmt->affected_rows > 0 ? 'Expense updated successfully' : 'No changes made or not authorized'
-]);
-
-$stmt->close();
 $con->close();
 ?> 

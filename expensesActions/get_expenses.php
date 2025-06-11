@@ -25,18 +25,48 @@ $user_id = $_SESSION['user_id'];
 $month = isset($_GET['month']) ? intval($_GET['month']) : date('m');
 $year = isset($_GET['year']) ? intval($_GET['year']) : date('Y');
 $category_search = isset($_GET['category_search']) ? $_GET['category_search'] : '';
-$company_id = isset($_GET['company_id']) ? intval($_GET['company_id']) : ($_SESSION['selected_company_id'] ?? null);
+$is_employee_view = isset($_GET['employee_view']) && $_GET['employee_view'] === 'true';
 
-// If no company is selected, return empty result set
-if (!$company_id) {
-    header('Content-Type: application/json');
-    echo json_encode([
-        'draw' => isset($_GET['draw']) ? intval($_GET['draw']) : 1,
-        'recordsTotal' => 0,
-        'recordsFiltered' => 0,
-        'data' => []
-    ]);
-    exit();
+// Get company access
+if ($is_employee_view) {
+    // Get all companies the employee has access to
+    $companies_stmt = $con->prepare("
+        SELECT GROUP_CONCAT(company_id) as company_ids
+        FROM user_companies
+        WHERE user_id = ?
+    ");
+    $companies_stmt->bind_param("i", $user_id);
+    $companies_stmt->execute();
+    $result = $companies_stmt->get_result();
+    $row = $result->fetch_assoc();
+    $company_ids = $row['company_ids'];
+    $companies_stmt->close();
+
+    if (!$company_ids) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'draw' => isset($_GET['draw']) ? intval($_GET['draw']) : 1,
+            'recordsTotal' => 0,
+            'recordsFiltered' => 0,
+            'data' => [],
+            'error' => 'No companies assigned'
+        ]);
+        exit();
+    }
+} else {
+    // Regular view - use selected company
+    $company_ids = isset($_GET['company_id']) ? intval($_GET['company_id']) : ($_SESSION['selected_company_id'] ?? null);
+    
+    if (!$company_ids) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'draw' => isset($_GET['draw']) ? intval($_GET['draw']) : 1,
+            'recordsTotal' => 0,
+            'recordsFiltered' => 0,
+            'data' => []
+        ]);
+        exit();
+    }
 }
 
 // Verify user has access to this company
@@ -45,7 +75,7 @@ $verify_stmt = $con->prepare("
     WHERE user_id = ? AND company_id = ? 
     LIMIT 1
 ");
-$verify_stmt->bind_param("ii", $user_id, $company_id);
+$verify_stmt->bind_param("ii", $user_id, $company_ids);
 $verify_stmt->execute();
 $verify_result = $verify_stmt->get_result();
 
@@ -64,16 +94,21 @@ if ($verify_result->num_rows === 0) {
 $verify_stmt->close();
 
 // Debug: Print the query parameters
-error_log("Month: $month, Year: $year, Category Search: $category_search, Company ID: $company_id");
+error_log("Month: $month, Year: $year, Category Search: $category_search, Company ID: $company_ids");
 
 try {
     // Get total records before filtering
-    $total_query = "SELECT COUNT(*) as count FROM expenses WHERE user_id = ? AND MONTH(date) = ? AND YEAR(date) = ? AND company_id = ?";
-    $params = [$user_id, $month, $year, $company_id];
-    $types = "iiii";
+    $total_query = "
+        SELECT COUNT(*) as count 
+        FROM expenses e
+        JOIN account_titles at ON e.account_title_id = at.title_id
+        WHERE e.company_id IN (" . $company_ids . ") 
+        AND MONTH(e.date) = ? AND YEAR(e.date) = ?";
+    $params = [$month, $year];
+    $types = "ii";
 
     if (!empty($category_search)) {
-        $total_query .= " AND category LIKE ?";
+        $total_query .= " AND at.title_name LIKE ?";
         $params[] = "%$category_search%";
         $types .= "s";
     }
@@ -94,17 +129,27 @@ try {
     $order_dir = isset($_GET['order'][0]['dir']) ? $_GET['order'][0]['dir'] : 'ASC';
 
     // Column names for ordering
-    $columns = ['date', 'particulars', 'category', 'amount'];
-    $order_column_name = $columns[$order_column] ?? 'date';
+    $columns = ['e.date', 'e.particulars', 'at.title_name', 'e.amount'];
+    $order_column_name = $columns[$order_column] ?? 'e.date';
 
     // Prepare the base query
-    $query = "SELECT * FROM expenses WHERE user_id = ? AND MONTH(date) = ? AND YEAR(date) = ? AND company_id = ?";
-    $params = [$user_id, $month, $year, $company_id];
-    $types = "iiii";
+    $query = "
+        SELECT 
+            e.expense_id,
+            e.date,
+            e.particulars,
+            e.amount,
+            at.title_name as category
+        FROM expenses e
+        JOIN account_titles at ON e.account_title_id = at.title_id
+        WHERE e.company_id IN (" . $company_ids . ") 
+        AND MONTH(e.date) = ? AND YEAR(e.date) = ?";
+    $params = [$month, $year];
+    $types = "ii";
 
     // Add category search if provided
     if (!empty($category_search)) {
-        $query .= " AND category LIKE ?";
+        $query .= " AND at.title_name LIKE ?";
         $params[] = "%$category_search%";
         $types .= "s";
     }

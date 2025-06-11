@@ -20,7 +20,18 @@ $user_id = $_SESSION['user_id'];
 $expense_id = intval($_GET['id']);
 
 // Fetch the expense
-$stmt = $con->prepare("SELECT * FROM expenses WHERE expense_id = ? AND user_id = ?");
+$stmt = $con->prepare("
+    SELECT 
+        e.expense_id,
+        e.date,
+        e.particulars,
+        e.amount,
+        at.title_name as category,
+        at.title_id as account_title_id
+    FROM expenses e
+    JOIN account_titles at ON e.account_title_id = at.title_id
+    WHERE e.expense_id = ? AND e.user_id = ?
+");
 $stmt->bind_param("ii", $expense_id, $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -39,6 +50,7 @@ echo json_encode([
     'date' => $expense['date'],
     'particulars' => $expense['particulars'],
     'category' => $expense['category'],
+    'account_title_id' => $expense['account_title_id'],
     'amount' => $expense['amount']
 ]);
 
