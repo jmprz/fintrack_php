@@ -275,47 +275,6 @@ INSERT INTO `companies` (`company_name`, `address`, `contact_number`) VALUES
 
 INSERT INTO `user_companies` (`user_id`, `company_id`) VALUES (1, 1);
 
---
--- Default account titles for expenses and sales
---
-
-INSERT INTO `account_titles` (`company_id`, `title_name`, `type`) VALUES
-(1, 'PROF FEE', 'expense'),
-(1, 'DONATION', 'expense'),
-(1, 'VEHICLE', 'expense'),
-(1, 'SUPPLIES', 'expense'),
-(1, 'EMPLOYEES BENEFIT', 'expense'),
-(1, 'MEDICAL SUPPLIES', 'expense'),
-(1, 'BONUS', 'expense'),
-(1, 'TAXES AND LICENSES', 'expense'),
-(1, 'MATERIALS', 'expense'),
-(1, 'COM/LIGHT/WATER', 'expense'),
-(1, 'REP & MAINTENANCE', 'expense'),
-(1, 'OTHER EXPENSES', 'expense'),
-(1, 'EQUIPMENT', 'expense'),
-(1, 'CA', 'expense'),
-(1, 'TRAINORS FEE', 'expense'),
-(1, 'CONSTRUCTION FEE', 'expense'),
-(1, 'CONSTRUCTION MATERIALS', 'expense'),
-(1, 'MEALS', 'expense'),
-(1, 'TRANSPORTATION', 'expense'),
-(1, 'FUEL AND OIL', 'expense'),
-(1, 'DIRECTORS FEE', 'expense'),
-(1, 'TUTORIAL FEE', 'expense'),
-(1, 'GIFTS', 'expense'),
-(1, 'SALARY', 'expense'),
-(1, 'ALLOWANCE', 'expense'),
-(1, 'SSS/HMDF/PHEALTH', 'expense'),
-(1, 'SERVICE', 'expense'),
-(1, 'UNIFORM', 'expense'),
-(1, 'LOAN AMORTIZATION', 'expense'),
-(1, 'PRODUCT SALES', 'sale'),
-(1, 'SERVICE REVENUE', 'sale'),
-(1, 'CONSULTING FEES', 'sale'),
-(1, 'COMMISSION INCOME', 'sale'),
-(1, 'RENTAL INCOME', 'sale'),
-(1, 'INTEREST INCOME', 'sale'),
-(1, 'MISCELLANEOUS INCOME', 'sale');
 
 COMMIT;
 

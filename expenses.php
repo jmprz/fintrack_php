@@ -375,23 +375,47 @@ $con->close();
           });
       });
 
-      // Function to update summary cards (modified to not handle selected total)
+      // Function to update summary cards
       function updateSummaryCards() {
         const month = $('#monthSelect').val();
         const year = $('#yearSelect').val();
         const search = $('#searchBox').val();
 
-        fetch(`expensesActions/get_summary.php?month=${month}&year=${year}&category_search=${search}`)
-          .then(response => response.json())
+        console.log('Fetching summary data for:', { month, year, search });
+
+        fetch(`expensesActions/get_summary.php?month=${month}&year=${year}&category_search=${encodeURIComponent(search)}`)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Network response was not ok');
+            }
+            return response.json();
+          })
           .then(data => {
-            $('#totalExpenses').text('₱' + parseFloat(data.total).toLocaleString('en-US', {
+            console.log('Summary data received:', data);
+            
+            if (!data.success) {
+              console.error('Error from server:', data.message);
+              return;
+            }
+
+            const total = parseFloat(data.total) || 0;
+            const totalWithoutLoan = parseFloat(data.total_without_loan) || 0;
+
+            console.log('Parsed values:', { total, totalWithoutLoan });
+            
+            $('#totalExpenses').text('₱' + total.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2
             }));
-            $('#totalExpensesWithoutLoan').text('₱' + parseFloat(data.total_without_loan).toLocaleString('en-US', {
+            $('#totalExpensesWithoutLoan').text('₱' + totalWithoutLoan.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2
             }));
+          })
+          .catch(error => {
+            console.error('Error updating summary cards:', error);
+            $('#totalExpenses').text('₱0.00');
+            $('#totalExpensesWithoutLoan').text('₱0.00');
           });
       }
 
